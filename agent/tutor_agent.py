@@ -4,13 +4,15 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 
 # Import LangChain components
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.memory import ConversationBufferWindowMemory 
 from langchain_core.output_parsers import StrOutputParser 
 from langchain.agents import AgentExecutor, create_react_agent, Tool
 from wikipedia import exceptions as wikipedia_exceptions # Thêm import này
 from langchain_community.utilities import WikipediaAPIWrapper 
+from langchain.vectorstores import FAISS
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 #Google Calendar Tools
 from urllib.parse import quote_plus
@@ -19,6 +21,26 @@ import json
 
 # Load environment variables
 load_dotenv()
+
+class RAGTool:
+    def __init__(self):
+        DOC_PATH = os.path.join(os.path.dirname(__file__), '..', 'docs', 'doc.txt')
+
+        with open(DOC_PATH, "r", encoding="utf-8") as f:
+            document_text = f.read()
+        splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=100
+        )   
+        chunks = splitter.split_text(document_text)
+        embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        vectorstore = FAISS.from_texts(chunks, embedding_model)
+        self.vectorstore = vectorstore
+
+    def run(self, query: str) -> str:
+        docs = self.vectorstore.similarity_search(query, k=3)
+        return "\n".join([doc.page_content for doc in docs])
+
 
 class WikipediaTool:
     def __init__(self):
@@ -162,7 +184,12 @@ class EnglishTutorAgent:
                 name="Google Calendar Add Event",
                 func=GoogleCalendarAddEventTool().run,
                 description="Hữu ích khi người dùng muốn đặt lịch học hoặc một sự kiện. Cần các tham số: title (tiêu đề sự kiện), start_datetime_str (thời gian bắt đầu, ví dụ: '2025-12-25 10:00'), duration_minutes (thời lượng bằng phút, mặc định 60), description (mô tả).",
-            )
+            ),
+            Tool(
+            name="EnglishMaterialSearch",
+            func=RAGTool().run,
+            description="Trả lời các câu hỏi dựa trên tài liệu học tiếng Anh"
+        )
         ]
 
         # Khởi tạo Chain ban đầu với LCEL (sẽ không dùng .with_history() nữa)
@@ -187,27 +214,27 @@ class EnglishTutorAgent:
         prompt = ChatPromptTemplate.from_template(
             f"""({system_prompt})Answer the following questions as best you can, but speaking as compasionate medical professional. You have access to the following tools:
 
-{{tools}}
+            {{tools}}
 
-Use the following format:
+            Use the following format:
 
-Question: the input question you must answer
-Thought: you should always think about what to do.
-(If you need to use a tool, follow the Action/Observation format. Otherwise, proceed directly to Final Answer.)
-Action: the action to take, should be one of [{{tool_names}}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
+            Question: the input question you must answer
+            Thought: you should always think about what to do.
+            (If you need to use a tool, follow the Action/Observation format. Otherwise, proceed directly to Final Answer.)
+            Action: the action to take, should be one of [{{tool_names}}]
+            Action Input: the input to the action
+            Observation: the result of the action
+            ... (this Thought/Action/Action Input/Observation can repeat N times)
+            Thought: I now know the final answer
+            Final Answer: the final answer to the original input question
 
-Begin! Remember to speak as a compasionate medical professional when giving your final answer. If the condition is serious advise they speak to a doctor.
+            Begin! Remember to speak as a compasionate medical professional when giving your final answer. If the condition is serious advise they speak to a doctor.
 
-Previous conversation history:
-{{chat_history}}
+            Previous conversation history:
+            {{chat_history}}
 
-User question: {{input}}
-{{agent_scratchpad}}""")
+            User question: {{input}}
+            {{agent_scratchpad}}""")
         
         agent = create_react_agent(self.llm, self.tools, prompt)
         
