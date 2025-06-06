@@ -13,30 +13,47 @@ from wikipedia import exceptions as wikipedia_exceptions # Thêm import này
 from langchain_community.utilities import WikipediaAPIWrapper 
 from langchain.vectorstores import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyPDFLoader
+from langchain.embeddings import HuggingFaceEmbeddings
 
 #Google Calendar Tools
 from urllib.parse import quote_plus
 import pytz
 import json
+import fitz
 
-# Load environment variables
+
 load_dotenv()
+
+        
+def extract_blocks_from_pdf(pdf_path):
+    doc = fitz.open(pdf_path)
+    texts = []
+
+    for page in doc:
+        blocks = page.get_text("blocks")
+        for block in blocks:
+            text = block[4].strip()
+            if text:
+                texts.append(text)
+    return texts
+    
+def split_chunks(blocks, chunk_size=500, chunk_overlap=50):
+    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    return splitter.create_documents(blocks)
 
 class RAGTool:
     def __init__(self):
-        DOC_PATH = os.path.join(os.path.dirname(__file__), '..', 'docs', 'doc.txt')
-
-        with open(DOC_PATH, "r", encoding="utf-8") as f:
-            document_text = f.read()
-        splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=100
-        )   
-        chunks = splitter.split_text(document_text)
-        embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        vectorstore = FAISS.from_texts(chunks, embedding_model)
+        PDF_PATH = os.path.join(os.path.dirname(__file__), '..', 'docs', 'tense_grammar.pdf')
+        blocks = extract_blocks_from_pdf(PDF_PATH)
+        
+        docs = split_chunks(blocks)
+         
+        embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        vectorstore = FAISS.from_documents(docs, embedding_model)
         self.vectorstore = vectorstore
 
+    
     def run(self, query: str) -> str:
         docs = self.vectorstore.similarity_search(query, k=3)
         return "\n".join([doc.page_content for doc in docs])
