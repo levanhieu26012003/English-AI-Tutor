@@ -95,9 +95,12 @@ def main():
                     with st.expander("🧠 Hiển thị chi tiết quá trình suy luận (Agent Trace)"):
                         st.code(response_data["trace_log"], language="text")
 
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": response_data["answer"]
+        })
+
                         
-                        # Add AI response to chat history
-                        st.session_state.messages.append({"role": "assistant", "content": response_data})
                     
     # Text analysis section
     st.divider()
