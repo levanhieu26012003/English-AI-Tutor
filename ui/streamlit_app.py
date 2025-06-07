@@ -86,7 +86,7 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Đang suy nghĩ..."):
                 # Gọi phương thức chat mới đã được tích hợp LangChain
-                response = st.session_state.tutor.chat_with_langchain(prompt) 
+                response = st.session_state.tutor.run_agent_chat(prompt) 
                 st.write(response)
         
         # Add AI response to chat history
