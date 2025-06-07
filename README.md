@@ -34,6 +34,8 @@ AI English Tutor là một ứng dụng học tiếng Anh sử dụng trí tuệ
 | Streamlit | Giao diện người dùng |
 | LangChain | Framework cho AI Agent |
 | Groq / Gemini | Nền tảng LLM cho phản hồi ngôn ngữ |
+| RAG | Xử lý phản hồi thông minh |
+| ChromaDB | Lưu trữ tài liệu nội bô |
 | dotenv | Quản lý biến môi trường |
 | WikipediaAPI | Tool tra cứu thông tin |
 | Google Calendar API | Tạo sự kiện học tập |
