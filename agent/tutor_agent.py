@@ -1,9 +1,4 @@
 import os
-import pytz
-import json
-import fitz
-import contextlib
-import io
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import google.generativeai as genai
@@ -14,14 +9,18 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.memory import ConversationBufferWindowMemory 
 from langchain_core.output_parsers import StrOutputParser 
 from langchain.agents import AgentExecutor, create_react_agent, Tool
+from wikipedia import exceptions as wikipedia_exceptions # Thêm import này
 from langchain_community.utilities import WikipediaAPIWrapper 
 from langchain.vectorstores import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.embeddings import HuggingFaceEmbeddings
-from wikipedia import exceptions as wikipedia_exceptions # Thêm import này
 
+#Google Calendar Tools
 from urllib.parse import quote_plus
+import pytz
+import json
+import fitz
 
 
 load_dotenv()
@@ -264,29 +263,16 @@ class EnglishTutorAgent:
             handle_parsing_errors=True
         )
     
-    def run_agent_chat(self, user_message, return_trace=False):
-        """Process user message and optionally return output log."""
+    def run_agent_chat(self, user_message):
+        """Process user message using the LangChain Agent and return AI response."""
         try:
-            # Capture terminal output (stdout)
-            buffer = io.StringIO()
-            with contextlib.redirect_stdout(buffer):
-                result = self.agent_executor.invoke({"input": user_message})
-            trace_output = buffer.getvalue()
-
-            if return_trace:
-                return {
-                    "answer": result['output'],
-                    "trace_log": trace_output
-                }
-            else:
-                return result['output']
+            response = self.agent_executor.invoke({"input": user_message})
+            return response['output']
 
         except Exception as e:
-            return {
-                "answer": f"Xin lỗi, có lỗi xảy ra khi trò chuyện: {str(e)}",
-                "trace_log": ""
-            }
-            
+            print(f"\n--- LỖI TRONG run_agent_chat: ---\n{e}\n-----------------------------------\n")
+            return f"Xin lỗi, có lỗi xảy ra khi trò chuyện: {str(e)}. Vui lòng thử lại hoặc kiểm tra cấu hình."
+        
     def set_system_prompt(self):
         """Create system prompt based on user profile"""
         level_descriptions = {

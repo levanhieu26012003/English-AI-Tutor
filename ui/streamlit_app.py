@@ -85,23 +85,13 @@ def main():
         # Get AI response
         with st.chat_message("assistant"):
             with st.spinner("Đang suy nghĩ..."):
-                response_data = st.session_state.tutor.run_agent_chat(prompt, return_trace=True)
-
-                # Hiển thị câu trả lời
-                st.write(response_data["answer"])
-
-                # Nếu có log terminal thì hiển thị
-                if response_data.get("trace_log"):
-                    with st.expander("🧠 Hiển thị chi tiết quá trình suy luận (Agent Trace)"):
-                        st.code(response_data["trace_log"], language="text")
-
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": response_data["answer"]
-        })
-
-                        
-                    
+                # Gọi phương thức chat mới đã được tích hợp LangChain
+                response = st.session_state.tutor.run_agent_chat(prompt) 
+                st.write(response)
+        
+        # Add AI response to chat history
+        st.session_state.messages.append({"role": "assistant", "content": response})
+    
     # Text analysis section
     st.divider()
     st.header("📝 Phân tích văn bản")
